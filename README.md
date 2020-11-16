@@ -1,5 +1,4 @@
-# PPS
-Parallel Processing System Lab
+<h1 style="text-align:center">Parallel Processing System</h1>
 
 # Lab 1 : Παραλληλοποίηση αλγορίθμων σε πολυπύρηνες αρχιτεκτονικές κοινής μνήμης
   * Conway's Game of Life
