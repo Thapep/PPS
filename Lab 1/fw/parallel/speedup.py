@@ -10,7 +10,7 @@ for i in range(len(lines)):
     l.append(re.findall(r'[+-]?\d+(?:\.\d+)?', lines[i]))
     tserial[int(l[i][0])] = (float(l[i][1])) 
 
-parallel = open('./fw1.out','r')
+parallel = open('fwstandar/fw.out','r')
 lines = parallel.readlines()
 
 tparallel = {}
@@ -20,8 +20,10 @@ tparallel[4096] = []
 p = []
 for i in range(len(lines)):
     p.append(re.findall(r'[+-]?\d+(?:\.\d+)?', lines[i]))
-    tparallel[int(p[i][0])].append((float(p[i][2])))
-
+    if len(p[i])==1:
+        continue
+    tparallel[int(p[i][0])].append((float(p[i][1])))
+print(tparallel)
 for k in tparallel.keys():
 
     if k == 1024:
@@ -32,23 +34,23 @@ for k in tparallel.keys():
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("time (ms)")
         plt.plot(tparallel[k], label="Time", color="blue", marker='x')
-        plt.title("FW in 1024×1024 table")
+        plt.title("Floyd-Warshall Standar Edition in 1024×1024 table")
         plt.savefig("time_fw1024.png", bbox_inches="tight")
 
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("speedup")
         plt.plot(sp1024, label="Speedup", color="blue", marker='x')
-        plt.title("FW in 1024×1024 table")
+        plt.title("Floyd-Warshall Standar Edition in 1024×1024 table")
         plt.savefig("speedup_fw1024.png", bbox_inches="tight")
 
 
@@ -60,23 +62,23 @@ for k in tparallel.keys():
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("time (ms)")
         plt.plot(tparallel[k], label="Time", color="blue", marker='x')
-        plt.title("FW in 2048×2048 table")
+        plt.title("Floyd-Warshall Standar Edition in 2048×2048 table")
         plt.savefig("time_fw2048.png", bbox_inches="tight")
 
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("speedup")
         plt.plot(sp2048, label="Speedup", color="blue", marker='x')
-        plt.title("FW in 2048×2048 table")
+        plt.title("Floyd-Warshall Standar Edition in 2048×2048 table")
         plt.savefig("speedup_fw2048.png", bbox_inches="tight")
 
     if k == 4096:
@@ -87,21 +89,21 @@ for k in tparallel.keys():
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("time (ms)")
         plt.plot(tparallel[k], label="Time", color="blue", marker='x')
-        plt.title("FW in 4096×4096 table")
+        plt.title("Floyd-Warshall Standar Edition in 4096×4096 table")
         plt.savefig("time_fw4096.png", bbox_inches="tight")
 
         fig, ax = plt.subplots()
         ax.grid(True)
         ax.set_xlabel("number of cores")
-        ax.xaxis.set_ticks(np.arange(0, 5, 1))
+        ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
-        ax.set_xlim(-0.5, 4.5)
+        ax.set_xlim(-0.5, 7.5)
         ax.set_ylabel("speedup")
         plt.plot(sp4096, label="Speedup", color="blue", marker='x')
-        plt.title("FW in 4096×4096 table")
+        plt.title("Floyd-Warshall Standar Edition in 4096×4096 table")
         plt.savefig("speedup_fw4096.png", bbox_inches="tight")
