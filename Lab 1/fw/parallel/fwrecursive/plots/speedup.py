@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import re
 import numpy as np
-serial = open('../../serial/fw_sr.out','r')
+serial = open('../../../serial/fw_sr.out','r')
 lines = serial.readlines()
 
 ts1024 = {}
@@ -30,7 +30,7 @@ print(ts2048)
 print(ts4096)
 
 
-parallel = open('fw_sr1.out','r')
+parallel = open('out.out','r')
 lines = parallel.readlines()
 
 tp1024 = {}
