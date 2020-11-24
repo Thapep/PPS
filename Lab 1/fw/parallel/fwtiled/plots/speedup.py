@@ -33,7 +33,7 @@ print(ts2048)
 print(ts4096)
 
 
-parallel = open('../fw_tiled.out','r')
+parallel = open('./fw_tiled.out','r')
 lines = parallel.readlines()
 
 tp1024 = {}
@@ -91,7 +91,7 @@ for k in 1024,2048,4096:
         ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
         ax.set_xlim(-0.5, 7.5)
-        ax.set_ylabel("time (ms)")
+        ax.set_ylabel("time (s)")
         plt.plot(tp1024[32], label="B=32", color="yellow", marker='x')
         plt.plot(tp1024[64], label="B=64", color="blue", marker='x')
         plt.plot(tp1024[128], label="B=128", color="red", marker='x')
@@ -139,7 +139,7 @@ for k in 1024,2048,4096:
         ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
         ax.set_xlim(-0.5, 7.5)
-        ax.set_ylabel("time (ms)")
+        ax.set_ylabel("time (s)")
         plt.plot(tp2048[32], label="B=32", color="yellow", marker='x')
         plt.plot(tp2048[64], label="B=64", color="blue", marker='x')
         plt.plot(tp2048[128], label="B=128", color="red", marker='x')
@@ -186,7 +186,7 @@ for k in 1024,2048,4096:
         ax.xaxis.set_ticks(np.arange(0, 8, 1))
         ax.set_xticklabels(['1', '2', '4', '6', '8', '16', '32', '64'], rotation=45)
         ax.set_xlim(-0.5, 7.5)
-        ax.set_ylabel("time (ms)")
+        ax.set_ylabel("time (s)")
         plt.plot(tp4096[32], label="B=32", color="yellow", marker='x')
         plt.plot(tp4096[64], label="B=64", color="blue", marker='x')
         plt.plot(tp4096[128], label="B=128", color="red", marker='x')
