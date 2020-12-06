@@ -30,8 +30,8 @@ double ** allocate2d ( int dimX, int dimY ) {
 	return array;
 }
 
-void free2d( double ** array) {
-    if (array==NULL) {
+void free2d( double ** array ) {
+    if (array == NULL) {
         fprintf(stderr,"Error in freeing matrix\n");
         exit(-1);
     }
