@@ -172,7 +172,6 @@ int main(int argc, char ** argv) {
     MPI_Scatterv(U_start, scattercounts, scatteroffset, global_block, &(u_current[1][1]), 1, local_block, 0, MPI_COMM_WORLD);
     MPI_Scatterv(U_start, scattercounts, scatteroffset, global_block, &(u_previous[1][1]), 1, local_block, 0, MPI_COMM_WORLD);
 
-
     //************************************//
 
     if (rank==0)
@@ -188,10 +187,7 @@ int main(int argc, char ** argv) {
     MPI_Type_vector(local[0],1,local[1]+2,MPI_DOUBLE,&dummy);
     MPI_Type_create_resized(dummy,0,sizeof(double),&col);
     MPI_Type_commit(&col);
-
-
         //************************************//
-
 
     //----Find the 4 neighbors with which a process exchanges messages----//
 
@@ -203,8 +199,6 @@ int main(int argc, char ** argv) {
     int x=1, y=0;
     MPI_Cart_shift(CART_COMM,x,1,&west,&east);
     MPI_Cart_shift(CART_COMM,y,1,&north,&south);
-
-
 
         /*Make sure you handle non-existing
                 neighbors appropriately*/
@@ -318,7 +312,6 @@ int main(int argc, char ** argv) {
         }
 #endif
 
-
     }
     gettimeofday(&ttf,NULL);
 
@@ -328,18 +321,12 @@ int main(int argc, char ** argv) {
     MPI_Reduce(&tcomp,&comp_time,1,MPI_DOUBLE,MPI_MAX,0,MPI_COMM_WORLD);
     MPI_Reduce(&tconv,&conv_time,1,MPI_DOUBLE,MPI_MAX,0,MPI_COMM_WORLD);
 
-
-
     //----Rank 0 gathers local matrices back to the global matrix----//
-
     if (rank==0) {
             U=allocate2d(global_padded[0],global_padded[1]);
     }
 
-
     MPI_Gatherv(&u_current[1][1], 1, local_block, U_start, scattercounts, scatteroffset, global_block, 0, MPI_COMM_WORLD);
-
-
 
         //----Printing results----//
     if (rank==0) {
@@ -492,39 +479,15 @@ int main(int argc, char ** argv) {
             }
     }
 
-
     //----Rank 0 scatters the global matrix----//
-
     MPI_Scatterv(U_start, scattercounts, scatteroffset, global_block, &(u_previous[1][1]), 1, local_block, 0, MPI_COMM_WORLD);
     MPI_Scatterv(U_start, scattercounts, scatteroffset, global_block, &(u_current[1][1]), 1, local_block, 0, MPI_COMM_WORLD);
 
 
-
     if (rank==0)
         free2d(U);
-
-
-
-        //----Define datatypes or allocate buffers for message passing----//
-
-        //*************TODO*******************//
-
-
-
-        /*Fill your code here*/
-
-
-
-
-
-
-
-
         //************************************//
-
-
     //----Find the 4 neighbors with which a process exchanges messages----//
-
         //*************TODO*******************//
     int north, south, east, west;
     int x=1, y=0;
@@ -533,15 +496,7 @@ int main(int argc, char ** argv) {
 
         /*Make sure you handle non-existing
                 neighbors appropriately*/
-
-
-
-
-
         //************************************//
-
-
-
     //---Define the iteration ranges per process-----//
 
     int i_min,i_max,j_min,j_max;
@@ -569,8 +524,6 @@ int main(int argc, char ** argv) {
                 -boundary processes
                 -boundary processes and padded global array
         */
-
-
         //----Computational core----//
 
     MPI_Request before_request[6];
@@ -660,8 +613,6 @@ int main(int argc, char ** argv) {
 
         MPI_Waitall(len_after_request, after_request, after_status);
 
-
-
 #ifdef TEST_CONV
         if (t%C==0) {
             gettimeofday(&tcvs, NULL);
@@ -672,10 +623,6 @@ int main(int argc, char ** argv) {
             tconv += (tcvf.tv_sec-tcvs.tv_sec)+(tcvf.tv_usec-tcvs.tv_usec)*0.000001;
         }
 #endif
-
-
-
-
     }
     gettimeofday(&ttf,NULL);
 
@@ -692,26 +639,9 @@ int main(int argc, char ** argv) {
             U=allocate2d(global_padded[0],global_padded[1]);
             U_start = &(U[0][0]);
     }
-
-
         //*************TODO*******************//
-
-
-
-
     MPI_Gatherv(&u_current[1][1], 1, local_block, U_start, scattercounts, scatteroffset, global_block, 0, MPI_COMM_WORLD);
-
-
-
-
-
-
      //************************************//
-
-
-
-
-
         //----Printing results----//
 
     if (rank==0) {
@@ -732,5 +662,73 @@ int main(int argc, char ** argv) {
 
 ```
 
-### Αποτελέσματα
 
+
+
+
+---
+
+<h4 style="text-align:center">Μετρήσεις</h4>
+
+
+
+***1. Μετρήσεις με έλεγχο σύγκλισης***
+
+Σε αυτό το σενάριο τρέξαμε τους τρεις αλγορίθμους με ενεργοποιημένο τον έλεγχο σύγκλισης, με 64 MPI διεργασίες και τετραγωνικό μέγεθος πίνακα 1024.
+
+Οι χρόνοι φαίνονται παρακάτω
+
+![Comparison](/home/pep/Documents/PPS/lab2/redblack/mpi/Comparison.png)
+
+Είναι προφανές πώς ο αλγόριθμος Jacobi είναι κατα πολύ πιο χρονοβόρος από τους άλλους δύο. Σε σημείο μάλιστα που σε κοινή κλίμακα οι χρόνοι των μεθόδων GaussSor και RedBlackSor δεν διακρίνονται.
+
+Χαρακτηριστικό είναι το γεγονός πως ο χρόνος σύγκλισης του Jacobi είναι μεγαλύτερος από τους συνολικούς χρόνους εκτέλεσης των άλλων δυο αλγορίθμων. Συνεπώς σε καμία περίπτωση κάποιος δε θα επιλέξει τον αλγόριθμο Jacobi για την εκτέλεση της συγκεκριμένης εφαρμογής σε περιβάλλον κατανεμημένης μνήμης. 
+
+Τώρα μένει να συγκρίνουμε τους χρόνους των GaussSor και RedBlackSor ώστε να βγάλουμε ενας ασφαλές συμπέρασμα για τον καλύτερο αλγόριθμο.
+
+Εποπτικά έχουμε
+
+​					![GaussVSRedblack](/home/pep/Documents/PPS/lab2/redblack/mpi/GaussVSRedblack.png)
+
+Εδώ διακρίνουμε κάπως ανάμεικτα αποτελέσματα. Από τη μία ο RedBlackSor έχει πιο μικρούς χρόνους σύγκλισης και υπολογισμού αλλά το GaussSor έχει μικρότερο συνολικό χρόνο εκτέλεσης. Επειδή εν γένει αυτό που θέλουμε είναι ο αλγοριθμός μας να έχει οσο γίνεται μικρότερο χρόνο εκτέλεσης ο GaussSor υπερτερεί έναντι του RedBlackSor και συνεπώς είναι ο καταλληλότερος αλγόριθμος για αρχιτεκτονικές κατανεμημένης μνήμης.
+
+
+
+***2. Μετρήσεις χωρίς έλεγχο σύγκλισης***
+
+Σε αυτό το σενάριο, απενεργοποιήσαμε τον έλεγχο σύγκλισης ώστε να βγάλουμε ασφαλή συμπεράσματα για την επιτάχυνση. 
+
+Τρέξαμε τους τρεις αλγορίθμους για σταθερό Τ=256, 1,2,4,8,16,32,64 MPI διεργασίες και για τετραγωνικούς πίνακες 2048, 4096, 6144 
+
+Τα αποτελέσματά μας είναι τα εξης
+
+
+
+***Speedup***
+
+                          2048x2048                           |                          4096x4096                           | 6144x6144 
+:-------------------------:|:-------------------------:|:-------------------------:
+ <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/speedup_2048.png" alt="speedup_2048" style="zoom: 67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/speedup_4096.png" alt="speedup_4096" style="zoom: 67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/speedup_6144.png" alt="speedup_6144" style="zoom: 67%;" /> 
+
+ 
+
+***Computation Time***
+
+|                          2048x2048                           |                          4096x4096                           |                          6144x6144                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+| <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Comp Time 2048.png" style="zoom:67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Comp Time 4096.png" style="zoom:67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Comp Time 6144.png" style="zoom:67%;" /> |
+
+​				  														
+
+***Total Time***
+
+|                          2048x2048                           |                          4096x4096                           |                          6144x6144                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+| <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Total Time 2048.png" style="zoom:67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Total Time 4096.png" style="zoom:67%;" /> | <img src="/home/pep/Documents/PPS/lab2/redblack/mpi/Total Time 6144.png" style="zoom:67%;" /> |
+
+
+
+Από τα παραπάνω έχουμε τις εξής παρατηρήσεις
+
+*  Για σταθερό αριθμό επαναλήψεων ο Jacobi είναι πιο γρήγορος διότι εχει λιγότερο κόστος επικοινωνίας από τον Gauss και λιγότερο υπολογιστικό κόστος από τον RedBlack
+* Ο αλγόριθμος που κλιμακώνει καλύτερα είναι ο Gauss. 
