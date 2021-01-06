@@ -1,0 +1,87 @@
+---- As seen on https://cs.stackexchange.com/questions/33818/tag-index-and-offset-of-associative-cache ----
+
+A cache is just a faster, yet smaller, memory. It might take a long time to access data in the main memory, but it is very fast to access the cache. So we better save data in our small and fast cache rather than in our big and slow main memory. However, the cache is small, so it cannot hold the entire data of the main memory. Instead, it will hold some part of the data stored in the main memory.
+
+Which part of the data? We don’t know in advance - this would depend on the actual usage of the data (i.e., it depends on the software we run). In general we would like to be able to put in the cache any part of the main memory, and we would need to figure out where to put each memory-address in the cache, and how to identify which memory-address lies in each cache-cell. The index and tag bits will do just that (see below for a better explanation). But before we get there, let’s make things a bit more complex: we stop discussing addresses of the main memory and start discussing memory blocks.
+Blocks and offsets
+
+Many times, when we access the memory, we access consecutive addresses. That is, many times if we access address 0, then shortly after we will access address 1 (and 2, and 3....). So maybe when we first access address 0, and put it in the cache, it will be smart to bring along addresses 1 and 2 and 3 [...] and put them in the cache as well. This "chunk" of information that we bring into the cache is called a block. The cache always hold blocks of consecutive memory addresses. It is possible that each block in the cache contains the data of only 1 memory-address. It is possible that a block contains the data of 2 (consecutive) addresses. Maybe it contains 128 consecutive addresses... Each cache has its own parameters.
+
+Since the cache "knows" only blocks rather than specific addresses, we need a way to distinguish different addresses within a specific block. For this we have offset bits. If a block contains x
+addresses of the memory, then any x consecutive addresses constitute a single block. Given a specific address in the memory, we can look at its bits representation: the MSB will be the "block number" and the LSB would be the offset inside the block. That is, to get the block number out of a specific address we can simply ignore the last log2x bits (LSB), and the rest will indicate the number of the block associated with these x addresses. The lower log2x
+
+bits are called offset bits and they are used to tell the cache which address within the block we wish to access.
+Set Associativity
+
+Now to the more interesting part of caching. Where does each block go within the cache? This seems like a stupid question: why don't any block go anywhere in the cache. The answer is that if any block can be anywhere, then it may be very difficult to locate that block when we need it -- we will have to search through the entire cache for that block, and this search may be slow/expensive.
+
+The solution is that the cache is split into “sets”. Each memory block is assigned to one specific set. This assignment never changes. Whenever you access that memory block: if it is in the cache it will be in that assigned set; if it is not in that assigned set, it is not in the cache and you need to bring it from the memory.
+
+    Example: let's say the cache have a place for only 2 blocks (Place A, and Place B), and the memory contains 10 blocks (block0 to block9). We can decide that in the first “set” (Place A) we put only even blocks, and in the second set (Place B) only odd blocks. Now if we access block 5 (say), then we only need to check the second set (Place B), because it can only be there. This may save us HALF the search time (or half the cost of searching a block).
+
+In the above example, each “set” could hold only one block, but in general, each set can hold n
+blocks at the same time: this kind of cache is called n
+
+-associative.
+
+In other words, an n
+-associative cache is split into sets, where each set holds n memory blocks. This allows us to determine the amount of different sets: it is the size of the cache (in blocks) divided by n
+
+.
+
+Let’s have two examples:
+
+    1-associative: each set can hold only one block. As always, each address is assigned to a unique set (this assignment better be balanced, or all the addresses will compete on the same place in the cache). Such a setting is called direct mapping
+
+    fully-associative: here each set is of the size of the entire cache. That is, if the cache is of size t
+
+blocks, a fully associative cache is in fact a t
+
+    -associative cache. How many sets are there? one! and all the blocks are assigned to this single set. Therefore, each blocks can be saved “anywhere” at the cache, because all the cells of the cache belong to the same set.
+
+index and tag
+
+We said that each block gets an assignment to one of the k=size/n
+sets. To make things simple, this assignment is determined by looking at lowest log2k
+
+bits of the block number. These are called the “index” bits: they index to which set the block will go into.
+
+    Pop Quiz 1: How many index bits are there in a fully associative cache?
+
+Answer (think about it for a second before looking at the answer):
+
+next,
+
+    Pop Quiz 2: How many index bits are there in a direct mapping cache?
+
+Answer
+
+Next, there are the “tag” bits. To explain these, let’s think on a fully-associative cache. To make things simple, let’s assume the cache is of size 2 blocks. Assume this two cache-cells are full with information from the main memory: the first cell holds block 0 and the second one holds block 190. Now we access an address in block 220. But it is not in the cache, so we need to bring it from the memory and replace one of the blocks that are currently in the cache. But wait! How do we actually know that the cache doesn’t hold block 220? Right. The cache must “remember” that the first cell holds block 0, and that the second one holds block 190. No other choice. This information (0 or 190) is called the tag: to each cell of the cache we add a little tag with that indicates what block is currently there. Simple, right?
+
+But saving information in the cache is expensive, and we don’t want to save information we never use. In the above example every address could be placed anywhere in the cache, but this is not the case for other associativity levels: Each address can go only to its assigned set as determined by the “index” bits. So if there are two sets, where the first can hold only blocks 0,2,4,6,8, and the second set can hold only blocks 1,3,5,7,9, then we don’t need to save the entire block number in the cache-- block 4 can never appear in the second set, and block 7 can never appear in the first set. This means we don’t need to save the last bit (the one that determines the parity), but we need to save the rest. Indeed, the last bit serves as the index, and the rest serve as tag, thus, by knowing the set+the tag we know exactly which block is currently kept in each cache-cell.
+
+Now back to your question, which exemplifies the above ideas:
+
+The 3-way associativity means that the cache is split into sets, and each set can hold up to 3 blocks. The question gives us that each block is 2 words.
+
+So instead of having 3 sets, where each can hold 2 different addresses/block (as you had in the table you drew), the cache has a large number of sets, and each set has a room for 3 blocks.
+
+How many sets exactly? well, the cache has 24 words, that is 12 blocks, that is 4sets (of 3 blocks each!). This gives us the size of the index field: 2 bits. [The index decides which set we go into, and there are only 4 sets, so the index needs to be only 2 bits..].
+
+This was the first part of the story. The other part is that a block is two words. Therefore, e.g., when the address 0 is accessed, the cache (set 0) will hold the first two memory words. Thus, if the address 1 is later access, it will be a hit. Since both addressed 0 and 1 are in the same block, we need a way to distinguish them. This will be the "offset" bit.
+
+The above suggests that the 8bit address is to be parsed as
+
+tttttiio
+
+where o=offset (distinguishes between the 2 words in each block), i is the index (specifies the set) and t is the tag (tells us which block is occupying each cache cell..
+
+So, unless I'm being too careless in thinking it over, the mapping will look like this (building on your table).
+
+Block   Add      Index     Hit/Miss   Set 0         Set 0      Set 0     Set 1      Set 1      Set 1     Set 2      Set 2      Set 2     Set 3      Set 3      Set 3
+3   =00000011    01        miss      mem[00000] 
+180 =10110100    10        miss      mem[00000]                                                                     mem[10110]
+43  =00101011    01        miss      mem[00000]     mem[00101]                                                      mem[10110]
+2   =00000010    01        hit       mem[00000]     mem[00101]                                                      mem[10110]                    
+
+etc... Note that by mem[ttttt] I denote the specific block by writing its 5-bit tag value.
