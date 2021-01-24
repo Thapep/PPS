@@ -9,6 +9,11 @@
   * [Gauss](https://github.com/Thapep/PPS/edit/main/lab2/gauss)
   * [RedBlack](https://github.com/Thapep/PPS/edit/main/lab2/redblack)
 
+#### Lab 3 : Synchronization issues in parallel machines
+  * [Threading](https://github.com/Thapep/PPS/edit/main/lab3/z1)
+  * [Exclusive Locking](https://github.com/Thapep/PPS/edit/main/lab3/z2)
+  * [Synch on Data Structures](https://github.com/Thapep/PPS/edit/main/lab3/z3)
+  
 #### Presentation : Processing In/Near Memory 
   
  
