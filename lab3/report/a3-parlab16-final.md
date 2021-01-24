@@ -317,3 +317,623 @@ type>_lock.c.***
 
 
 
+***4. Τακτικές συγχρονισμού για δομές δεδομένων***
+
+Στο τρίτο και τελευταίο μέρος της άσκησης στόχος είναι η υλοποίηση και η αξιολόγηση των διαφορετικών εναλλακτικών τακτικών για δομές δεδομένων. Συγκεκριμένα έχουμε μια ταξινομημένη συνδεδεμένη λίστα και εκτελούμε σε αυτήν αναζητήσεις, εισαγωγές και διαγραφές. 
+
+
+
+***4.1. Υλοποιήστε τις ζητούμενες λίστες συμπληρώνοντας τα αντίστοιχα αρχεία της μορφής ll_<sync_
+type>.c.***
+
+Συγκεκριμένα υλοποιούμε τις παρακάτω τακτικές συγχρονισμού.
+
+* *Fine-grain locking*
+
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h> /* rand() */
+  #include <limits.h>
+  #include <pthread.h> /* for pthread_spinlock_t */
+  
+  #include "/home/parallel/pps/2020-2021/a3/common/alloc.h"
+  #include "ll.h"
+  
+  typedef struct ll_node {
+  	int key;
+  	struct ll_node *next;
+  	pthread_spinlock_t lock;
+  	/* other fields here? */
+  } ll_node_t;
+  
+  struct linked_list {
+  	ll_node_t *head;
+  	/* other fields here? */
+  	//pthread_spinlock_t lock;
+  };
+  
+  /**
+   * Create a new linked list node.
+   **/
+  static ll_node_t *ll_node_new(int key)
+  {
+  	ll_node_t *ret;
+  
+  	XMALLOC(ret, 1);
+  	ret->key = key;
+  	ret->next = NULL;
+  	/* Other initializations here? */
+          pthread_spin_init(&ret->lock, PTHREAD_PROCESS_SHARED);
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list node.
+   **/
+  static void ll_node_free(ll_node_t *ll_node)
+  {
+  	pthread_spin_destroy(&(ll_node->lock));
+  	XFREE(ll_node);
+  }
+  
+  /**
+   * Create a new empty linked list.
+   **/
+  ll_t *ll_new()
+  {
+  	ll_t *ret;
+  	XMALLOC(ret, 1);
+  	ret->head = ll_node_new(-1);
+  	ret->head->next = ll_node_new(INT_MAX);
+  	ret->head->next->next = NULL;
+      	//pthread_spin_init(&ret->lock, PTHREAD_PROCESS_SHARED);
+      
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list and all its contained nodes.
+   **/
+  void ll_free(ll_t *ll)
+  {
+  	ll_node_t *next, *curr = ll->head;
+  	while (curr) {
+  		next = curr->next;
+  		ll_node_free(curr);
+  		curr = next;
+  	}
+  	XFREE(ll);
+  }
+  
+  int ll_contains(ll_t *ll, int key)
+  {
+  	//pthread_spin_lock(&ll->lock);
+  	int ret = 0;
+  	
+  	ll_node_t *curr, *next;
+  	
+  	curr = ll->head;
+  	pthread_spin_lock(&curr->lock);
+  	next = curr->next;	
+  	pthread_spin_lock(&next->lock);
+  	
+   	while (next->key < key && next->next != NULL){
+  		pthread_spin_unlock(&curr->lock);
+  		curr = curr->next;
+  		next = curr->next;
+  		pthread_spin_lock(&next->lock);
+  	}	
+  	pthread_spin_unlock(&curr->lock);
+  	pthread_spin_unlock(&next->lock);
+  	ret = (key == curr->key);
+  	return ret;    
+  }
+  
+  int ll_add(ll_t *ll, int key)
+  {
+  	int ret = 0;
+  	ll_node_t *curr, *next;
+  	ll_node_t *new_node;
+  	
+  //	if (key < ll->head->key) return 1;	
+  	
+  	//pthread_spin_lock(&ll->lock);
+  	curr = ll->head;
+  	pthread_spin_lock(&curr->lock);
+  	next = curr->next;
+      	pthread_spin_lock(&next->lock);
+  	//pthread_spin_unlock(&ll->lock);
+  	
+  	while (next->key < key && next->next != NULL) {
+          	pthread_spin_unlock(&curr->lock);
+          	curr = next;
+  		next = curr->next;
+          	pthread_spin_lock(&next->lock);
+  	}
+  
+  	if (key != next->key) {
+  		ret = 1;
+  		new_node = ll_node_new(key);
+  		new_node->next = next;
+  		curr->next = new_node;
+  	}
+  	pthread_spin_unlock(&curr->lock);
+      	pthread_spin_unlock(&next->lock);
+  	return ret;
+  }
+  
+  int ll_remove(ll_t *ll, int key)
+  {
+  	int ret=0;
+  	//pthread_spin_lock(&ll->lock);
+      	ll_node_t *prev = ll->head;
+  	pthread_spin_lock(&prev->lock);
+  
+      	ll_node_t *curr = prev->next;
+      	pthread_spin_lock(&curr->lock);
+      	//pthread_spin_unlock(&ll->lock);
+  	
+  	while (curr->key < key && curr->next != NULL){
+  		pthread_spin_unlock(&prev->lock);
+         		prev = curr;
+          	curr = curr->next;
+          	pthread_spin_lock(&curr->lock);
+  	}
+  	if (key == curr->key){
+          	prev->next = curr->next;
+  		pthread_spin_unlock(&prev->lock);
+  		pthread_spin_unlock(&curr->lock);
+  		ll_node_free(curr);
+  		ret = 1;
+      	}
+  	else{
+  		pthread_spin_unlock(&prev->lock);
+     		pthread_spin_unlock(&curr->lock);
+      	}
+  	return ret;
+  }
+  
+  /**
+   * Print a linked list.
+   **/
+  void ll_print(ll_t *ll)
+  {
+  	ll_node_t *curr = ll->head;
+  	printf("LIST [");
+  	while (curr) {
+  		if (curr->key == INT_MAX)
+  			printf(" -> MAX");
+  		else
+  			printf(" -> %d", curr->key);
+  		curr = curr->next;
+  	}
+  	printf(" ]\n");
+  }
+  ```
+
+
+
+* *Optimistic synchronization*
+
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h> /* rand() */
+  #include <limits.h>
+  #include <pthread.h> /* for pthread_spinlock_t */
+  
+  #include "/home/parallel/pps/2020-2021/a3/common/alloc.h"
+  #include "ll.h"
+  
+  typedef struct ll_node {
+  	int key;
+  	struct ll_node *next;
+  	pthread_spinlock_t lock;
+  	/* other fields here? */
+  } ll_node_t;
+  
+  struct linked_list {
+  	ll_node_t *head;
+  	/* other fields here? */
+  };
+  
+  /**
+   * Create a new linked list node.
+   **/
+  static ll_node_t *ll_node_new(int key)
+  {
+  	ll_node_t *ret;
+  
+  	XMALLOC(ret, 1);
+  	ret->key = key;
+  	ret->next = NULL;
+  	/* Other initializations here? */
+  	pthread_spin_init(&ret->lock, PTHREAD_PROCESS_SHARED);
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list node.
+   **/
+  static void ll_node_free(ll_node_t *ll_node)
+  {
+  	pthread_spin_destroy(&ll_node->lock);
+  	XFREE(ll_node);
+  }
+  
+  /**
+   * Create a new empty linked list.
+   **/
+  ll_t *ll_new()
+  {
+  	ll_t *ret;
+  
+  	XMALLOC(ret, 1);
+  	ret->head = ll_node_new(-1);
+  	ret->head->next = ll_node_new(INT_MAX);
+  	ret->head->next->next = NULL;
+  
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list and all its contained nodes.
+   **/
+  void ll_free(ll_t *ll)
+  {
+  	ll_node_t *next, *curr = ll->head;
+  	while (curr) {
+  		next = curr->next;
+  		ll_node_free(curr);
+  		curr = next;
+  	}
+  	XFREE(ll);
+  }
+  
+  int validate(ll_t *ll, ll_node_t *pred, ll_node_t *curr){
+          ll_node_t *node = ll->head;
+  
+          while (node->key <= pred->key && node != NULL) {
+                  if (node == pred) return (pred->next==curr);
+                  node = node->next;
+          }
+          return 0;
+  }
+  
+  int ll_contains(ll_t *ll, int key)
+  {
+  	ll_node_t *pred, *curr;
+          
+  	while(1) {
+                  pred = ll->head;
+                  curr = pred->next;
+  
+                  while (curr != NULL && curr->key <= key) {
+  			if (curr->key == key)
+  				break;
+                          pred = curr;
+                          curr = curr->next;
+                  }
+                  
+  		pthread_spin_lock(&(pred->lock));
+                  pthread_spin_lock(&(curr->lock));
+  
+                  if (validate(ll, pred, curr)){
+  			pthread_spin_unlock(&(curr->lock));
+                  	pthread_spin_unlock(&(pred->lock));
+  			return (curr->key == key);
+  		}
+  	
+  		pthread_spin_unlock(&(curr->lock));
+                  pthread_spin_unlock(&(pred->lock));
+          }
+  }
+  
+  int ll_add(ll_t *ll, int key)
+  {
+          ll_node_t *pred, *curr, *new_node;
+  
+          while (1){
+                  pred = ll->head;
+                  curr = pred->next;
+                  while (curr->key <= key && curr!=NULL){
+                          //if ( key == curr->key) break;
+                          pred = curr;
+                          curr = curr->next;
+                  }
+  
+                  pthread_spin_lock(&pred->lock);
+                  pthread_spin_lock(&curr->lock);
+  
+                  if (validate(ll,pred,curr)){
+                          if (curr->key != key){
+                                  new_node = ll_node_new(key);
+  				pred->next = new_node;
+  				new_node->next = curr;
+  				pthread_spin_unlock(&curr->lock);
+  				pthread_spin_unlock(&pred->lock); 
+                                  return 1;
+                          }
+                          else {
+  				pthread_spin_unlock(&curr->lock);
+  				pthread_spin_unlock(&pred->lock);
+                                  return 0;
+                          }
+                  }
+                  pthread_spin_unlock(&pred->lock);
+                  pthread_spin_unlock(&curr->lock);
+          }
+  }
+  
+  int ll_remove(ll_t *ll, int key)
+  {
+  	ll_node_t *pred, *curr;
+  
+  	while (1){
+  		pred = ll->head;
+  		curr = pred->next;
+  		while (curr->key <=key && curr!=NULL){	
+  			if ( key == curr->key) break;
+  			pred = curr;
+  			curr = curr->next;
+  		}
+  		
+  		pthread_spin_lock(&pred->lock);
+  		pthread_spin_lock(&curr->lock);
+  		
+  		if (validate(ll,pred,curr)){
+  			if (curr->key == key){
+  				pred->next = curr->next;
+  				pthread_spin_unlock(&curr->lock);
+  				pthread_spin_unlock(&pred->lock);
+  				return 1;
+  			}
+  			else {
+  				pthread_spin_unlock(&curr->lock);
+  				pthread_spin_unlock(&pred->lock);
+  				return 0;
+  			}
+  		}
+  		pthread_spin_unlock(&pred->lock);
+  		pthread_spin_unlock(&curr->lock);		
+  	}
+  }
+  
+  /**
+   * Print a linked list.
+   **/
+  void ll_print(ll_t *ll)
+  {
+  	ll_node_t *curr = ll->head;
+  	printf("LIST [");
+  	while (curr) {
+  		if (curr->key == INT_MAX)
+  			printf(" -> MAX");
+  		else
+  			printf(" -> %d", curr->key);
+  		curr = curr->next;
+  	}
+  	printf(" ]\n");
+  }
+  ```
+
+
+
+* *Lazy synchronization*
+
+  ```c
+  #include <stdio.h>
+  #include <stdlib.h> /* rand() */
+  #include <limits.h>
+  #include <pthread.h> /* for pthread_spinlock_t */
+  
+  #include "/home/parallel/pps/2020-2021/a3/common/alloc.h"
+  #include "ll.h"
+  
+  typedef struct ll_node {
+  	int key;
+  	struct ll_node *next;
+  	pthread_spinlock_t lock;
+  	int marked; // 0 --> init // 1 --> deleted
+  } ll_node_t;
+  
+  struct linked_list {
+  	ll_node_t *head;
+  	/* other fields here? */
+  };
+  
+  /**
+   * Create a new linked list node.
+   **/
+  static ll_node_t *ll_node_new(int key)
+  {
+  	ll_node_t *ret;
+  
+  	XMALLOC(ret, 1);
+  	ret->key = key;
+  	ret->next = NULL;
+  	ret->marked = 0;
+  	pthread_spin_init(&ret->lock,PTHREAD_PROCESS_SHARED);
+  
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list node.
+   **/
+  static void ll_node_free(ll_node_t *ll_node)
+  {
+  	XFREE(ll_node);
+  }
+  
+  /**
+   * Create a new empty linked list.
+   **/
+  ll_t *ll_new()
+  {
+  	ll_t *ret;
+  
+  	XMALLOC(ret, 1);
+  	ret->head = ll_node_new(-1);
+  	ret->head->next = ll_node_new(INT_MAX);
+  	ret->head->next->next = NULL;
+  
+  	return ret;
+  }
+  
+  /**
+   * Free a linked list and all its contained nodes.
+   **/
+  void ll_free(ll_t *ll)
+  {
+  	ll_node_t *next, *curr = ll->head;
+  	while (curr) {
+  		next = curr->next;
+  		ll_node_free(curr);
+  		curr = next;
+  	}
+  	XFREE(ll);
+  }
+  
+  int validate(ll_node_t *pred, ll_node_t *curr){
+  	return (!pred->marked && !curr->marked && pred->next == curr);	
+  }
+  
+  int ll_contains(ll_t *ll, int key)
+  {
+  	ll_node_t *curr;
+  	
+  	curr = ll->head;
+  	
+  	while (curr->key < key ){
+  		curr = curr->next;
+  	}
+  	return (curr->key==key && !curr->marked);
+  }
+  
+  int ll_add(ll_t *ll, int key)
+  {
+  	ll_node_t *pred, *curr, *new_node;
+  
+  	while (1){
+  		pred = ll->head;
+  		curr = pred->next;
+  		while (curr->key < key){
+  			pred = curr;
+  			curr = curr->next;
+  		}
+  		
+  		pthread_spin_lock(&pred->lock);
+  		pthread_spin_lock(&curr->lock);
+  		
+  		if (validate(pred, curr)){
+  			if (curr->key != key){
+  				new_node = ll_node_new(key);
+  				pred->next = new_node;
+  				new_node->next = curr;
+  				pthread_spin_unlock(&pred->lock);
+  				pthread_spin_unlock(&curr->lock);
+  				return 1;
+  			}
+  			else {
+  				pthread_spin_unlock(&pred->lock);
+  				pthread_spin_unlock(&curr->lock);
+  				return 0;
+  			}
+  		}
+  		pthread_spin_unlock(&pred->lock);
+  		pthread_spin_unlock(&curr->lock);
+  	}
+  	return 0;
+  }
+  
+  int ll_remove(ll_t *ll, int key)
+  {
+  	ll_node_t *pred, *curr;
+  
+  	while (1){
+  		pred = ll->head;
+  		curr = pred->next;
+  		while(curr->key < key){
+  			pred = curr;
+  			curr = curr->next;
+  		}		
+  			
+  		pthread_spin_lock(&pred->lock);
+  		pthread_spin_lock(&curr->lock);
+  		
+  		if (validate(pred,curr)){
+  			if (curr->key == key){
+  				curr->marked = 1;
+  				pred->next = curr->next;
+  				pthread_spin_unlock(&pred->lock);
+  				pthread_spin_unlock(&curr->lock);
+  				return 1;
+  			}
+  			else{
+  				pthread_spin_unlock(&pred->lock);
+  				pthread_spin_unlock(&curr->lock);
+  				return 0;
+  			}
+  		}
+  		pthread_spin_unlock(&pred->lock);
+  		pthread_spin_unlock(&curr->lock);		
+  	}
+  }
+  
+  /**
+   * Print a linked list.
+   **/
+  void ll_print(ll_t *ll)
+  {
+  	ll_node_t *curr = ll->head;
+  	printf("LIST [");
+  	while (curr) {
+  		if (curr->key == INT_MAX)
+  			printf(" -> MAX");
+  		else
+  			printf(" -> %d", curr->key);
+  		curr = curr->next;
+  	}
+  	printf(" ]\n");
+  }
+  ```
+
+
+
+* *Non-blocking synchronization*
+
+  ```c
+  //XAAXAXXXAXAAXAXXAXAXAXAXAXAAXXAX
+  ```
+
+
+
+***4.2. Εκτελέστε την εφαρμογή για όλες τις διαφορετικές υλοποιήσεις λίστας. Εκτελέστε για 1,2,4,8,16,32,64 νήματα, για λίστες μεγέθους 1024 και 8192 και για συνδυασμούς λειτουργιών (αναζητήσεις-εισαγωγές-διαγραφές) 80-10-10 και 20-40-40. Παρουσιάστε τα αποτελέσματά σας σε διαγράμματα και εξηγήστε την συμπεριφορά της εφαρμογής για κάθε κλείδωμα.***
+
+
+
+Παρακάτω βλέπουμε τα αποτελέσματα από τις εκτελέσεις
+
+
+
+* *Συνδυασμός λειτουργιών 80/10/10*
+
+|                          1024x1024                           |                          8192x8192                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| ![](/home/peptop/Documents/PPS/lab3/plots/ex3_thoughput_1024_1.png) | ![](/home/peptop/Documents/PPS/lab3/plots/ex3_thoughput_8192_1.png) |
+
+
+
+* *Συνδυασμός λειτουργιών 20/40/40*
+
+|                          1024x1024                           |                          8192x8192                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| ![](/home/peptop/Documents/PPS/lab3/plots/ex3_thoughput_1024_2.png) | ![](/home/peptop/Documents/PPS/lab3/plots/ex3_thoughput_8192_2.png) |
+
+
+
+
+
+Αρχικά, παρατηρούμε ότι επιβεβαιώνεται η κατάταξη που είχαμε θεωρητικά στις διάφορες υλοποιήσεις. Δηλαδή, η optimistic υλοποίηση είναι καλύτερη από την fine grain και η lazy υλοποίηση είναι καλύτερη από όλες (ανεξάρτητα από το μέγεθος της λίστας και το μείγμα των λειτουργιών). Όσο αυξάνονται τα νήματα, η διαφορά τους μεγαλώνει καθώς έχουμε όλο και περισσότερες λειτουργίες και όλο και περισσότερες καταστάσεις συναγωνισμού. Ως προς το μέγεθος της λίστας, προφανώς όταν μεγαλώνει το μέγεθός της, το throughput πέφτει καθώς έχουμε να διατρέξουμε μία μεγαλύτερη λίστα. Ως προς το μείγμα των λειτουργιών, έχουμε σημαντική διαφορά στη μικρή λίστα για το lazy, όπου η επίδοση είναι καλύτερη όταν έχουμε κυρίως αναζητήσεις. Αυτό συμβαίνει, γιατί στη lazy υλοποίηση η contains δεν έχει κανένα κλείδωμα πράγμα που ευνοεί κατά πολύ την συνολική επίδοση.
+
+Συνολικά, όπως ήταν αναμενόμενο η fgl υλοποίηση δεν κλιμακώνει καθόλου καθώς για κάθε λειτουργία έχει μια μεγάλη σειρά από λήψεις και απελευθερώσεις κλειδωμάτων και δεν επιτρέπει τα νήματα να εργαστούν ταυτόχρονα σε διαφορετικά σημεία. Αυτό βελτιώνεται με την optimized υλοποίηση ειδικότερα για πολλά νήματα καθώς μπορεί διατρέχουμε περισσότερες φορές την λίστα αλλά το κάνουμε χωρίς κλειδώματα. Τέλος, η lazy υλοποίηση είναι η καλύτερη καθώς με την βοήθεια των boolean μεταβλητών, το κλείδωμα γίνεται για πολύ μικρότερο χρόνο (ενώ στην contains δεν γίνεται καθόλου) ενώ επιτρέπεται στα νήματα να δουλεύουν παράλληλα σε διαφορετικές περιοχές. Η non blocking υλοποίηση δεν έγινε αλλά υποθέτουμε ότι θα ήταν η αποδοτικότερη από όλες καθώς δεν χρησιμοποιεί καθόλου κλειδώματα.
