@@ -1,0 +1,1 @@
+gcc -Wall -Wextra -pthread -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function main.c lazy.c /home/parallel/pps/2020-2021/a3/common/aff.c -o linked_list
